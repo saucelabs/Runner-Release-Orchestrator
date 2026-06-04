@@ -1,0 +1,235 @@
+name: Trigger All Runners
+
+on:
+  workflow_dispatch:
+    inputs:
+      # Per-runner release inputs — mirrors each runner's release.yml buttons.
+      # Leave a runner's fields blank to release it WITHOUT a releaseType/preReleaseFlavor
+      # (the downstream release.yml accepts empty inputs and runs anyway).
+      cypress_releaseType:
+        description: "cypress · Release type - major, minor or patch"
+        required: false
+        default: ""
+      cypress_preReleaseFlavor:
+        description: "cypress · Pre-Release flavor - rc, beta, or anything"
+        required: false
+        default: ""
+      playwright_releaseType:
+        description: "playwright · Release type - major, minor or patch"
+        required: false
+        default: ""
+      playwright_preReleaseFlavor:
+        description: "playwright · Pre-Release flavor - rc, beta, or anything"
+        required: false
+        default: ""
+      testcafe_releaseType:
+        description: "testcafe · Release type - major, minor or patch"
+        required: false
+        default: ""
+      testcafe_preReleaseFlavor:
+        description: "testcafe · Pre-Release flavor - rc, beta, or anything"
+        required: false
+        default: ""
+      puppeteer_releaseType:
+        description: "puppeteer · Release type - major, minor or patch"
+        required: false
+        default: ""
+      puppeteer_preReleaseFlavor:
+        description: "puppeteer · Pre-Release flavor - rc, beta, or anything"
+        required: false
+        default: ""
+
+jobs:
+  trigger-and-wait:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false          # one runner failing must not cancel the others
+      matrix:
+        include:
+          - name: cypress
+            repo: saucelabs/sauce-cypress-runner
+            workflow: release.yml
+            releaseType: ${{ github.event.inputs.cypress_releaseType }}
+            preReleaseFlavor: ${{ github.event.inputs.cypress_preReleaseFlavor }}
+          - name: playwright
+            repo: saucelabs/sauce-playwright-runner
+            workflow: release.yml
+            releaseType: ${{ github.event.inputs.playwright_releaseType }}
+            preReleaseFlavor: ${{ github.event.inputs.playwright_preReleaseFlavor }}
+          - name: testcafe
+            repo: saucelabs/sauce-testcafe-runner
+            workflow: release.yml
+            releaseType: ${{ github.event.inputs.testcafe_releaseType }}
+            preReleaseFlavor: ${{ github.event.inputs.testcafe_preReleaseFlavor }}
+          - name: puppeteer
+            repo: saucelabs/puppeteer-replay-runner
+            workflow: release.yml
+            releaseType: ${{ github.event.inputs.puppeteer_releaseType }}
+            preReleaseFlavor: ${{ github.event.inputs.puppeteer_preReleaseFlavor }}
+
+    name: ${{ matrix.name }} (${{ matrix.repo }})
+
+    steps:
+      - name: Debug token
+        env:
+          GH_TOKEN: ${{ secrets.FOR_TRIGGER_ALL_BUTTON }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "❌ Secret is empty or not accessible"
+            exit 1
+          else
+            echo "✅ Token loaded, length: ${#GH_TOKEN}"
+          fi
+
+      - name: Trigger ${{ matrix.workflow }} in ${{ matrix.repo }}
+        id: trigger
+        env:
+          GH_TOKEN: ${{ secrets.FOR_TRIGGER_ALL_BUTTON }}
+        run: |
+          RT="${{ matrix.releaseType }}"
+          PRF="${{ matrix.preReleaseFlavor }}"
+
+          # NOTE: no skip here anymore — every runner is triggered even when
+          # both fields are blank. Only non-empty values are passed through.
+
+          BEFORE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          ARGS=()
+          [ -n "$RT" ]  && ARGS+=( -f "releaseType=$RT" )
+          [ -n "$PRF" ] && ARGS+=( -f "preReleaseFlavor=$PRF" )
+
+          gh workflow run "${{ matrix.workflow }}" \
+            --repo "${{ matrix.repo }}" \
+            --ref main \
+            "${ARGS[@]}"
+
+          echo "Triggered (releaseType='$RT' preReleaseFlavor='$PRF'). Locating run ID..."
+          sleep 5
+
+          RUN_ID=""
+          for i in {1..10}; do
+            RUN_ID=$(gh run list \
+              --repo "${{ matrix.repo }}" \
+              --workflow "${{ matrix.workflow }}" \
+              --created ">=$BEFORE" \
+              --limit 1 \
+              --json databaseId --jq '.[0].databaseId')
+            [ -n "$RUN_ID" ] && [ "$RUN_ID" != "null" ] && break
+            echo "Waiting for run to register (attempt $i)..."
+            sleep 3
+          done
+
+          if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
+            echo "::error::Could not locate triggered run in ${{ matrix.repo }}"
+            exit 1
+          fi
+
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+          echo "run_url=https://github.com/${{ matrix.repo }}/actions/runs/$RUN_ID" >> $GITHUB_OUTPUT
+          echo "Run started: https://github.com/${{ matrix.repo }}/actions/runs/$RUN_ID"
+
+      - name: Wait for ${{ matrix.repo }} to finish
+        id: wait
+        if: steps.trigger.outputs.run_id != ''
+        env:
+          GH_TOKEN: ${{ secrets.FOR_TRIGGER_ALL_BUTTON }}
+        run: |
+          gh run watch "${{ steps.trigger.outputs.run_id }}" \
+            --repo "${{ matrix.repo }}" \
+            --interval 60 \
+            --exit-status
+
+      # release.yml stamps each release body with "- jobId: <github.run_id>".
+      # That run_id == the RUN_ID we captured, so we can find the exact release
+      # this run produced and read its tag_name (the new version). Windows/macOS
+      # are two assets on that one release, so we just check each is present.
+      - name: Resolve released version
+        id: ver
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.FOR_TRIGGER_ALL_BUTTON }}
+        run: |
+          RUN_ID="${{ steps.trigger.outputs.run_id }}"
+          VERSION=""; WIN="—"; MAC="—"
+          if [ -n "$RUN_ID" ]; then
+            REL=$(gh api "repos/${{ matrix.repo }}/releases?per_page=100" \
+                    --jq "[.[] | select(.body != null and (.body | contains(\"- jobId: $RUN_ID\")))] | first" 2>/dev/null || echo "")
+            if [ -n "$REL" ] && [ "$REL" != "null" ]; then
+              VERSION=$(echo "$REL" | jq -r '.tag_name // ""')
+              echo "$REL" | jq -e '[.assets[]?.name | select(test("win"))] | length > 0' >/dev/null 2>&1 && WIN="✅"
+              echo "$REL" | jq -e '[.assets[]?.name | select(test("mac"))] | length > 0' >/dev/null 2>&1 && MAC="✅"
+            fi
+          fi
+          [ -z "$VERSION" ] && VERSION="—"
+          {
+            echo "version=$VERSION"
+            echo "win=$WIN"
+            echo "mac=$MAC"
+          } >> $GITHUB_OUTPUT
+          echo "Resolved ${{ matrix.name }} → $VERSION  (windows:$WIN  macos:$MAC)"
+
+      - name: Save result row
+        if: always()
+        run: |
+          # Status comes straight from the watch outcome now (no skip state).
+          STATUS="${{ steps.wait.outcome }}"
+          [ -z "$STATUS" ] && STATUS="not-run"
+
+          # Human-readable requested release for this runner
+          RT="${{ matrix.releaseType }}"; PRF="${{ matrix.preReleaseFlavor }}"
+          REQ="$RT"
+          [ -n "$PRF" ] && REQ="${REQ:+$REQ / }$PRF"
+          [ -z "$REQ" ] && REQ="—"
+
+          mkdir -p out
+          printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+            "${{ matrix.name }}" \
+            "${{ matrix.repo }}" \
+            "$REQ" \
+            "${{ steps.ver.outputs.version }}" \
+            "${{ steps.ver.outputs.win }}" \
+            "${{ steps.ver.outputs.mac }}" \
+            "$STATUS" \
+            "${{ steps.trigger.outputs.run_url }}" \
+            > "out/${{ matrix.name }}.tsv"
+
+      - name: Upload result row
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-result-${{ matrix.name }}
+          path: out/${{ matrix.name }}.tsv
+          retention-days: 7
+
+  # Single location: collect every runner's new version into one table.
+  collect:
+    needs: trigger-and-wait
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all result rows
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-result-*
+          path: results
+          merge-multiple: true
+
+      - name: Print combined release versions
+        run: |
+          {
+            echo "## 🚀 Release versions — all runners"
+            echo ""
+            echo "| Runner | Repository | Requested | New version | Windows | macOS | Status | Run |"
+            echo "|--------|-----------|-----------|-------------|:-------:|:-----:|--------|-----|"
+            if ls results/*.tsv >/dev/null 2>&1; then
+              for n in cypress playwright testcafe puppeteer; do
+                f="results/$n.tsv"
+                [ -f "$f" ] || continue
+                IFS=$'\t' read -r name repo req version win mac status url < "$f"
+                if [ -n "$url" ]; then RUNCELL="[run]($url)"; else RUNCELL="—"; fi
+                echo "| $name | \`$repo\` | $req | \`$version\` | $win | $mac | $status | $RUNCELL |"
+              done
+            else
+              echo "| _no results found_ |  |  |  |  |  |  |  |"
+            fi
+          } | tee -a "$GITHUB_STEP_SUMMARY"
