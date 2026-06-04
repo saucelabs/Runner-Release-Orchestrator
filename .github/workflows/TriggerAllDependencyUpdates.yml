@@ -1,0 +1,91 @@
+name: Trigger All Runners
+
+on:
+  workflow_dispatch:
+    inputs:
+      update_level:
+        description: 'How far to update'
+        required: true
+        default: 'minor'
+        type: choice
+        options:
+          - patch
+          - minor
+          - latest
+
+jobs:
+  trigger-and-wait:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - repo: saucelabs/sauce-cypress-runner
+            workflow: deps-update.yml
+          - repo: saucelabs/sauce-playwright-runner
+            workflow: deps-update.yml
+          - repo: saucelabs/puppeteer-replay-runner
+            workflow: deps-update.yml
+          - repo: saucelabs/sauce-testcafe-runner
+            workflow: deps-update.yml
+
+    steps:
+      - name: Debug token
+        env:
+          GH_TOKEN: ${{ secrets.FOR_TRIGGER_ALL_BUTTON }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "❌ Secret is empty or not accessible"
+          else
+            echo "✅ Token loaded, length: ${#GH_TOKEN}"
+          fi
+
+      - name: Trigger ${{ matrix.workflow }} in ${{ matrix.repo }}
+        id: trigger
+        env:
+          GH_TOKEN: ${{ secrets.FOR_TRIGGER_ALL_BUTTON }}
+        run: |
+          BEFORE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          gh workflow run "${{ matrix.workflow }}" \
+            --repo "${{ matrix.repo }}" \
+            --ref main \
+            -f update_level=${{ github.event.inputs.update_level }}
+          echo "Triggered. Locating run ID..."
+          sleep 5
+          RUN_ID=""
+          for i in {1..10}; do
+            RUN_ID=$(gh run list \
+              --repo "${{ matrix.repo }}" \
+              --workflow "${{ matrix.workflow }}" \
+              --created ">=$BEFORE" \
+              --limit 1 \
+              --json databaseId --jq '.[0].databaseId')
+            [ -n "$RUN_ID" ] && [ "$RUN_ID" != "null" ] && break
+            echo "Waiting for run to register (attempt $i)..."
+            sleep 3
+          done
+          if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
+            echo "::error::Could not locate triggered run in ${{ matrix.repo }}"
+            exit 1
+          fi
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+          echo "run_url=https://github.com/${{ matrix.repo }}/actions/runs/$RUN_ID" >> $GITHUB_OUTPUT
+          echo "Run started: https://github.com/${{ matrix.repo }}/actions/runs/$RUN_ID"
+
+      - name: Wait for ${{ matrix.repo }} to finish
+        env:
+          GH_TOKEN: ${{ secrets.FOR_TRIGGER_ALL_BUTTON }}
+        run: |
+          gh run watch "${{ steps.trigger.outputs.run_id }}" \
+            --repo "${{ matrix.repo }}" \
+            --interval 60 \
+            --exit-status
+
+      - name: Report
+        if: always()
+        run: |
+          echo "### ${{ matrix.repo }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Workflow: \`${{ matrix.workflow }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Update level: \`${{ github.event.inputs.update_level }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Status: **${{ job.status }}**" >> $GITHUB_STEP_SUMMARY
+          echo "- [View run](${{ steps.trigger.outputs.run_url }})" >> $GITHUB_STEP_SUMMARY
