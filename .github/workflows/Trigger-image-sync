@@ -1,0 +1,30 @@
+# Place at: .github/workflows/trigger-image-sync-mr.yml
+#
+# Triggers the GitLab "generate-image-sync-mr" pipeline from GitHub on demand.
+# Versions are figured out automatically inside the GitLab script, so this
+# workflow only has to set the gate variable RUN_IMAGE_SYNC_MR=true.
+
+name: Trigger image-sync MR
+
+on:
+  workflow_dispatch: {}        # manual "Run workflow" button, runs only when you click it
+
+jobs:
+  trigger-gitlab:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger GitLab pipeline
+        env:
+          # Stored in GitHub: Settings > Secrets and variables > Actions
+          IMAGE_SYNC_TRIGGER_TOKEN: ${{ secrets.IMAGE_SYNC_TRIGGER_TOKEN }}
+          GITLAB_HOST: gitlab.tools.saucelabs.net
+          PROJECT_ID: "REPLACE_WITH_PROJECT_ID"   # the MR-bot project's numeric ID
+          REF: main
+        run: |
+          set -euo pipefail
+          response=$(curl --fail-with-body -sS -X POST \
+            -F "token=${IMAGE_SYNC_TRIGGER_TOKEN}" \
+            -F "ref=${REF}" \
+            -F "variables[RUN_IMAGE_SYNC_MR]=true" \
+            "https://${GITLAB_HOST}/api/v4/projects/${PROJECT_ID}/trigger/pipeline")
+          echo "$response" | python3 -c "import sys,json; d=json.load(sys.stdin); print('Triggered pipeline:', d.get('web_url'))"
