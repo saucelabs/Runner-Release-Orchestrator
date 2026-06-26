@@ -1,0 +1,38 @@
+name: Bump image-metadata-service versions
+
+# The "button": this shows up under the repo's Actions tab as
+# "Run workflow". One click triggers the GitLab pipeline with
+# UPDATE_IMAGES=true, which is the only thing that turns on the
+# update-image-versions job there. The script fetches the latest
+# Playwright + side-disk versions itself, so there are no inputs to fill in.
+on:
+  workflow_dispatch:
+
+jobs:
+  trigger-gitlab:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger GitLab pipeline
+        env:
+          # Pipeline trigger token from GitLab:
+          #   Settings -> CI/CD -> Pipeline trigger tokens
+          # stored as a GitHub Actions secret in this (orchestrator) repo.
+          TRIGGER_TOKEN: ${{ secrets.GITLAB_TRIGGER_TOKEN }}
+          GITLAB: "https://gitlab.tools.saucelabs.net"
+          PROJECT: "saucelabs%2Fcloud%2Fimage-metadata-service"
+          REF: "master"
+        run: |
+          set -euo pipefail
+
+          response=$(curl --fail-with-body --silent --show-error \
+            --request POST \
+            --form "token=${TRIGGER_TOKEN}" \
+            --form "ref=${REF}" \
+            --form "variables[UPDATE_IMAGES]=true" \
+            "${GITLAB}/api/v4/projects/${PROJECT}/trigger/pipeline")
+
+          echo "$response"
+          url=$(echo "$response" | python3 -c "import sys,json; print(json.load(sys.stdin)['web_url'])")
+          echo "Triggered GitLab pipeline: $url"
+          echo "### Triggered GitLab pipeline" >> "$GITHUB_STEP_SUMMARY"
+          echo "$url" >> "$GITHUB_STEP_SUMMARY"
