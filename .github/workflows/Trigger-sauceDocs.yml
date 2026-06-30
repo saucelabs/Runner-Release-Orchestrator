@@ -1,0 +1,25 @@
+name: Trigger Sauce Docs Framework Update
+
+# Lives in saucelabs/Runner-Release-Orchestrator.
+# Remotely triggers the `update-supported-versions` workflow in saucelabs/sauce-docs,
+# which reads the latest runner versions and opens a PR against the docs.
+
+on:
+  workflow_dispatch: {} # run manually from the Actions tab
+
+jobs:
+  trigger-docs-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch sauce-docs version update
+        env:
+          # PAT you provide as a repo/org secret. Needs permission to run
+          # workflows in saucelabs/sauce-docs:
+          #   - classic PAT: `workflow` scope
+          #   - fine-grained PAT: Actions = Read and write, scoped to sauce-docs
+          GH_TOKEN: ${{ secrets.DOCS_DISPATCH_TOKEN }}
+        run: |
+          gh workflow run update-supported-versions.yml \
+            --repo saucelabs/sauce-docs \
+            --ref main
+          echo "Dispatched update-supported-versions.yml in saucelabs/sauce-docs"
