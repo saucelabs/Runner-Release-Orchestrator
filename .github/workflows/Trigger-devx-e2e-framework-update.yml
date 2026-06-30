@@ -1,0 +1,31 @@
+name: Trigger Devx-e2e Monthly Framework Update
+
+# Manual button: go to the repo's Actions tab, pick this workflow,
+# and click "Run workflow". That fires the GitLab pipeline with
+# RUN_FRAMEWORK_UPDATE=true, which creates the framework-update MR.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "GitLab branch to run the pipeline on"
+        required: false
+        default: "master"
+
+env:
+  GITLAB_HOST: gitlab.tools.saucelabs.net
+  # URL-encoded path of saucelabs/devx/devx-e2e
+  GITLAB_PROJECT: saucelabs%2Fdevx%2Fdevx-e2e
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger GitLab pipeline (RUN_FRAMEWORK_UPDATE=true)
+        run: |
+          response=$(curl --fail --silent --show-error \
+            --request POST \
+            --form "token=${{ secrets.GITLAB_TRIGGER_TOKEN }}" \
+            --form "ref=${{ inputs.ref }}" \
+            --form "variables[RUN_FRAMEWORK_UPDATE]=true" \
+            "https://${GITLAB_HOST}/api/v4/projects/${GITLAB_PROJECT}/trigger/pipeline")
+          echo "$response" | jq -r '"Triggered pipeline: \(.web_url)"'
