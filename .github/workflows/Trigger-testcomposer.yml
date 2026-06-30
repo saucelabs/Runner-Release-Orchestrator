@@ -1,0 +1,33 @@
+name: Trigger TestComposer framework-bump MR
+
+# Manual "Run workflow" button only — nothing runs automatically.
+# It calls the GitLab pipeline API on test-composer with GENERATE_FRAMEWORK_MR=true,
+# which is the variable the generate-framework-mr job is gated on.
+on:
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kick off GitLab pipeline
+        env:
+          GITLAB_HOST: https://gitlab.tools.saucelabs.net
+          GITLAB_PROJECT: saucelabs/devx/test-composer
+          GITLAB_TOKEN: ${{ secrets.GITLAB_API_TOKEN }}   # PAT/bot token with `api` scope on test-composer
+        run: |
+          set -euo pipefail
+          project="${GITLAB_PROJECT//\//%2F}"   # URL-encode the namespace/path
+          payload=$(jq -n '{
+            ref: "master",
+            variables: [
+              { key: "GENERATE_FRAMEWORK_MR", value: "true" }
+            ]
+          }')
+          resp=$(curl -sS --fail-with-body -X POST \
+            -H "PRIVATE-TOKEN: ${GITLAB_TOKEN}" \
+            -H "Content-Type: application/json" \
+            "${GITLAB_HOST}/api/v4/projects/${project}/pipeline" \
+            -d "$payload")
+          echo "Triggered pipeline: $(echo "$resp" | jq -r '.web_url')"
+          echo "Status: $(echo "$resp" | jq -r '.status')"
