@@ -1,0 +1,40 @@
+name: Trigger Side-Disk Version Bump (mac + windows)
+
+# Manual button: go to the repo's Actions tab, pick this workflow,
+# and click "Run workflow". That fires BOTH GitLab side-disk pipelines
+# with RUN_VERSION_BUMP=true, which creates the version-bump MR on each repo.
+on:
+  workflow_dispatch:
+
+env:
+  GITLAB_HOST: gitlab.tools.saucelabs.net
+  # URL-encoded project paths (the "/" becomes %2F), same style as
+  # saucelabs%2Fdevx%2Fdevx-e2e in the other triggers.
+  MAC_PROJECT: vdc%2Fmac-side-disk
+  WINDOWS_PROJECT: vdc%2Fwindows-side-disk
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger mac-side-disk pipeline (RUN_VERSION_BUMP=true)
+        run: |
+          response=$(curl --fail --silent --show-error \
+            --request POST \
+            --form "token=${{ secrets.MAC_TRIGGER_TOKEN }}" \
+            --form "ref=master" \
+            --form "variables[RUN_VERSION_BUMP]=true" \
+            "https://${GITLAB_HOST}/api/v4/projects/${MAC_PROJECT}/trigger/pipeline")
+          echo "$response" | jq -r '"Triggered mac pipeline: \(.web_url)"'
+
+      # Runs even if mac failed, so one bad token can't silently skip windows.
+      - name: Trigger windows-side-disk pipeline (RUN_VERSION_BUMP=true)
+        if: ${{ !cancelled() }}
+        run: |
+          response=$(curl --fail --silent --show-error \
+            --request POST \
+            --form "token=${{ secrets.WINDOWS_TRIGGER_TOKEN }}" \
+            --form "ref=master" \
+            --form "variables[RUN_VERSION_BUMP]=true" \
+            "https://${GITLAB_HOST}/api/v4/projects/${WINDOWS_PROJECT}/trigger/pipeline")
+          echo "$response" | jq -r '"Triggered windows pipeline: \(.web_url)"'
