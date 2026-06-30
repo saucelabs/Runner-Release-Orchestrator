@@ -1,0 +1,27 @@
+name: Trigger release saucectl new-version
+
+on:
+  workflow_dispatch:
+    inputs:
+      releaseType:
+        description: 'Release type'
+        type: choice
+        required: true
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  trigger-bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Bump workflow in saucectl
+        env:
+          GH_TOKEN: ${{ secrets.SAUCECTL_DISPATCH_TOKEN }}
+        run: |
+          gh workflow run bump.yml \
+            --repo saucelabs/saucectl \
+            --ref main \
+            -f releaseType=${{ inputs.releaseType }}
