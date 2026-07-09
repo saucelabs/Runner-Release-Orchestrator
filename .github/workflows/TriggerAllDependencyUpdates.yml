@@ -1,4 +1,4 @@
-name: 1-Trigger All Dependency Updates
+name: 1-trigger-all-runners-dependency-updates
 
 on:
   workflow_dispatch:
