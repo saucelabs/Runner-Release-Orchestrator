@@ -1,4 +1,4 @@
-name: 9-trigger-TestComposer-framework-bump-MR
+name: 8-trigger-TestComposer-framework-bump-MR
 
 # Manual "Run workflow" button only — nothing runs automatically.
 # It calls the GitLab pipeline API on test-composer with GENERATE_FRAMEWORK_MR=true,
