@@ -1,4 +1,4 @@
-name: 5-trigger-image-metadata-service-versions
+name: 4-trigger-image-metadata-service-versions
 
 # The "button": this shows up under the repo's Actions tab as
 # "Run workflow". One click triggers the GitLab pipeline with
