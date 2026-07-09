@@ -1,4 +1,4 @@
-name: Trigger saucectl framework sync
+name: 6-trigger-saucectl-framework-sync
 
 # Lives in the common orchestrator repo. Its only job is to run the
 # `sync-framework-versions` workflow that already exists in saucelabs/saucectl.
