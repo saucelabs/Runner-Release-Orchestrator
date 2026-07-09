@@ -1,4 +1,4 @@
-name: Trigger All Release Versions
+name: 2-trigger-all-runner-release-versions
 
 on:
   workflow_dispatch:
