@@ -1,4 +1,4 @@
-name: Trigger All Dependency Updates
+name: 1.Trigger All Dependency Updates
 
 on:
   workflow_dispatch:
