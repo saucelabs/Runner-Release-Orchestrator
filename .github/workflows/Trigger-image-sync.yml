@@ -4,7 +4,7 @@
 # Versions are figured out automatically inside the GitLab script, so this
 # workflow only has to set the gate variable RUN_IMAGE_SYNC_MR=true.
 
-name: Trigger image-sync MR
+name: 4-trigger-image-sync-MR
 
 on:
   workflow_dispatch: {}        # manual "Run workflow" button, runs only when you click it
