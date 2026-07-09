@@ -1,4 +1,4 @@
-name: 3-trigger-side-disk-version (mac + windows)
+name: 2-trigger-side-disk-version (mac + windows)
 
 # Manual button: go to the repo's Actions tab, pick this workflow,
 # and click "Run workflow". That fires BOTH GitLab side-disk pipelines
