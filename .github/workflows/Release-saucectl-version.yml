@@ -1,4 +1,4 @@
-name: Trigger release saucectl new-version
+name: 7-trigger-release-saucectl-new-version
 
 on:
   workflow_dispatch:
