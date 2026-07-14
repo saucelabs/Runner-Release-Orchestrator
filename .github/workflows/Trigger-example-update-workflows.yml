@@ -1,0 +1,42 @@
+name: trigger-example-repos-version-bumps
+
+on:
+  workflow_dispatch:
+    inputs:
+      framework:
+        description: "Which example repo(s) to trigger"
+        type: choice
+        default: all
+        options:
+          - all
+          - cypress
+          - playwright
+          - testcafe
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false   # one repo failing shouldn't stop the others
+      matrix:
+        include:
+          - framework: cypress
+            repo: saucelabs/saucectl-cypress-example
+            workflow: bump-cypress-version.yml
+          - framework: playwright
+            repo: saucelabs/saucectl-playwright-example
+            workflow: bump-playwright-version.yml
+          - framework: testcafe
+            repo: saucelabs/saucectl-testcafe-example
+            workflow: bump-testcafe-version.yml
+    steps:
+      - name: Trigger ${{ matrix.framework }} bump
+        if: ${{ inputs.framework == 'all' || inputs.framework == matrix.framework }}
+        env:
+          GH_TOKEN: ${{ secrets.TRIGGER_GITHUB_WORKFLOW }}
+        run: |
+          set -euo pipefail
+          echo "Dispatching ${{ matrix.workflow }} in ${{ matrix.repo }} (ref: main)"
+          gh workflow run "${{ matrix.workflow }}" \
+            --repo "${{ matrix.repo }}" \
+            --ref main
