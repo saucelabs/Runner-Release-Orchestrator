@@ -14,8 +14,8 @@ Central control panel for releasing the Cypress, Playwright, TestCafe, and Puppe
 9. The newly available runners need to be tested as part of devx-e2e. Update the devx-e2e tests to target the latest available version of frameworks.
 Run 7th workflow for create MR for devx-e2e.
 10. The new runners can't be requested until they are exposed via Test-Composer. So, run 8th workflow to create MR for this update.
-11. Now, run 9th workflow to update sauce-docs. As, the newly available versions need to be referenced in the Sauce Labs docs.
-12. In the end, update our example-repos.
+11. Now, trigger 9.1 workflow to update sauce-docs. As, the newly available versions need to be referenced in the Sauce Labs docs.
+12. In the end, update our example-repos by trigger worflow 9.2.
 
 # Variables to run the pipelines are
 
