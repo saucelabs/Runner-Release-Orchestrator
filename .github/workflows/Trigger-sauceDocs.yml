@@ -1,4 +1,4 @@
-name: 9-trigger-sauce-Docs-framework-update
+name: 9.1-trigger-sauce-Docs-framework-update
 
 # Lives in saucelabs/Runner-Release-Orchestrator.
 # Remotely triggers the `update-supported-versions` workflow in saucelabs/sauce-docs,
