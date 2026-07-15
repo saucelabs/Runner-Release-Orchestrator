@@ -1,4 +1,4 @@
-name: trigger-example-repos-version-bumps
+name: 9.2.trigger-example-repos-version-bumps
 
 on:
   workflow_dispatch:
