@@ -14,7 +14,7 @@ jobs:
     steps:
       - name: Run saucectl sync-framework-versions
         env:
-          GH_TOKEN: ${{ secrets.SAUCECTL_DISPATCH_TOKEN }}
+          GH_TOKEN: ${{ secrets.TRIGGER_GITHUB_WORKFLOW }}
         run: |
           gh workflow run sync-runner-updates.yml \
             --repo saucelabs/saucectl \
