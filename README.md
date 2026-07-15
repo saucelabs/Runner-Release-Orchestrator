@@ -15,7 +15,7 @@ Central control panel for releasing the Cypress, Playwright, TestCafe, and Puppe
 Run 7th workflow for create MR for devx-e2e.
 10. The new runners can't be requested until they are exposed via Test-Composer. So, run 8th workflow to create MR for this update.
 11. Now, trigger 9.1 workflow to update sauce-docs. As, the newly available versions need to be referenced in the Sauce Labs docs.
-12. In the end, update our example-repos by trigger worflow 9.2.
+12. In the end, update our example-repos by trigger workflow 9.2.
 
 # Note
 All these workflows create PRs/MRs. Please wait for merges to complete before kicking off any further workflows.
