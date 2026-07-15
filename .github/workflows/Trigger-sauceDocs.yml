@@ -19,7 +19,7 @@ jobs:
           #   - fine-grained PAT: Actions = Read and write, scoped to sauce-docs
           GH_TOKEN: ${{ secrets.DOCS_DISPATCH_TOKEN }}
         run: |
-          gh workflow run update-supported-versions.yml \
+          gh workflow run update-new-runner-versions.yml \
             --repo saucelabs/sauce-docs \
             --ref main
-          echo "Dispatched update-supported-versions.yml in saucelabs/sauce-docs"
+          echo "Dispatched update-new-runner-versions.yml in saucelabs/sauce-docs"
