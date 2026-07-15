@@ -19,7 +19,7 @@ jobs:
     steps:
       - name: Trigger Bump workflow in saucectl
         env:
-          GH_TOKEN: ${{ secrets.SAUCECTL_DISPATCH_TOKEN }}
+          GH_TOKEN: ${{ secrets.TRIGGER_GITHUB_WORKFLOW }}
         run: |
           gh workflow run bump.yml \
             --repo saucelabs/saucectl \
