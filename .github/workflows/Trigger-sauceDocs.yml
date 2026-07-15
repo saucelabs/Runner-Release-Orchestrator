@@ -17,7 +17,7 @@ jobs:
           # workflows in saucelabs/sauce-docs:
           #   - classic PAT: `workflow` scope
           #   - fine-grained PAT: Actions = Read and write, scoped to sauce-docs
-          GH_TOKEN: ${{ secrets.DOCS_DISPATCH_TOKEN }}
+          GH_TOKEN: ${{ secrets.TRIGGER_GITHUB_WORKFLOW }}
         run: |
           gh workflow run update-new-runner-versions.yml \
             --repo saucelabs/sauce-docs \
