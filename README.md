@@ -17,6 +17,9 @@ Run 7th workflow for create MR for devx-e2e.
 11. Now, trigger 9.1 workflow to update sauce-docs. As, the newly available versions need to be referenced in the Sauce Labs docs.
 12. In the end, update our example-repos by trigger worflow 9.2.
 
+# Note
+All these workflows create PRs/MRs. Please wait for merges to complete before kicking off any further workflows.
+
 # Variables to run the pipelines are
 
 window-side-disk : RUN_VERSION_BUMP == "true"
