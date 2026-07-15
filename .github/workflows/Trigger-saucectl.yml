@@ -1,13 +1,5 @@
 name: 5-trigger-saucectl-framework-sync
 
-# Lives in the common orchestrator repo. Its only job is to run the
-# `sync-framework-versions` workflow that already exists in saucelabs/saucectl.
-#
-# Requires a repo secret SAUCECTL_DISPATCH_TOKEN: a token with
-# "Actions: write" permission on saucelabs/saucectl
-# (fine-grained PAT, or classic PAT with `repo` + `workflow` scope,
-# or a GitHub App installation token).
-
 on:
   workflow_dispatch:
     inputs:
@@ -24,7 +16,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.SAUCECTL_DISPATCH_TOKEN }}
         run: |
-          gh workflow run sync-framework-versions.yml \
+          gh workflow run sync-runner-updates.yml \
             --repo saucelabs/saucectl \
             --ref main \
             -f framework="${{ inputs.framework }}"
