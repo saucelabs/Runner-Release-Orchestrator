@@ -33,3 +33,31 @@ image-metadata-service : UPDATE_IMAGES == "true"
 devx-e2e : RUN_FRAMEWORK_UPDATE == "true"
 
 test-composer : GENERATE_FRAMEWORK_MR == "true"
+
+# Pipeline Trigger Tokens
+
+For triggering the pipelines from an external GitHub orchestrator, the right credential in GitLab is a Pipeline trigger token — it's purpose-built for kicking off a pipeline from outside and doesn't grant broad API access like a regular access token.
+
+Token names (one per repo):
+
+MAC_SIDE_DISK_TRIGGER_TOKEN
+
+WINDOWS_SIDE_DISK_TRIGGER_TOKEN
+
+IMAGE_SYNC_TRIGGER_TOKEN
+
+IMAGE_METADATA_SERVICE_TRIGGER_TOKEN
+
+DEVX_E2E_TRIGGER_TOKEN 
+
+TEST_COMPOSER_TRIGGER_TOKEN   
+
+## How to create them (owner does this, per repo):
+
+In GitLab go to the repo → Settings → CI/CD → Pipeline trigger tokens → Add new token. Enter the description/name from the list above, click Create pipeline trigger token, and copy the value. Repeat for all six repos.
+
+Use this exact name to fill the the description.
+
+## How we can save them:
+
+Store them as GitHub repository secrets in the orchestrator repo: Settings → Secrets and variables → Actions → New repository secret, naming each one clearly (e.g. MAC_SIDE_DISK_TRIGGER_TOKEN, WINDOWS_SIDE_DISK_TRIGGER_TOKEN, etc.). The orchestrator service then uses each secret to trigger that repo's pipeline.
